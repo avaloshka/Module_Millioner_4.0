@@ -2,10 +2,11 @@
 
 
 class Millioner:
+    def __init__(self):
+        self.group_url = 'https://finviz.com/groups.ashx?g=sector&v=140&o=name'
 
-    def get_successful_group(selenium):
+    def get_successful_group(self):
         # the group url is known
-        group_url = 'https://finviz.com/groups.ashx?g=sector&v=140&o=name'
         from bs4 import BeautifulSoup
         import requests
         import pandas as pd
@@ -17,7 +18,7 @@ class Millioner:
         }
         # Try parsing
         try:
-            response = requests.get(group_url, headers=headers).text
+            response = requests.get(self.group_url, headers=headers).text
             soup = BeautifulSoup(response, 'html.parser')
             # table = soup.find('table', attrs={'class': 'table-light'})
 
