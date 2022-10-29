@@ -4,6 +4,11 @@
 class Millioner:
     def __init__(self):
         self.group_url = 'https://finviz.com/groups.ashx?g=sector&v=140&o=name'
+        self.winner_url = ''
+        self.settings_url = ''
+        self.stock = ''
+        self.prices = []
+
 
     def get_successful_group(self):
         # the group url is known
@@ -18,6 +23,9 @@ class Millioner:
         }
         # Try parsing
         try:
+            # reset winner url and get a new one
+            self.winner_url = ''
+
             response = requests.get(self.group_url, headers=headers).text
             soup = BeautifulSoup(response, 'html.parser')
             # table = soup.find('table', attrs={'class': 'table-light'})
@@ -39,16 +47,13 @@ class Millioner:
             # Drop column 'No.'
             df = df.drop(['No.'], axis=1)
             # I have a dataframe at this point
-            print(df)
 
             # Parse links for every sector in the table
             links_for_sector = []
             for row in soup.findAll('td', {'class': 'body-table'}):
                 try:
                     a = row.a
-                    # href = href.find('a.href')
                     if a:
-                        # base_url + href = full link, append each link to list
                         links_for_sector.append('https://finviz.com/' + a.get('href'))
                 except:
                     # ignore every item except the one that contains tag <a>
@@ -64,34 +69,195 @@ class Millioner:
             df['Perf Month'] = df['Perf Month'].str.replace('%', '')
             df['Perf Quart'] = df['Perf Quart'].str.replace('%', '')
 
-            print('Successfully removed %')
-
             df['Perf Week'] = pd.to_numeric(df['Perf Week'])
             df['Perf Month'] = pd.to_numeric(df['Perf Month'])
             df['Perf Quart'] = pd.to_numeric(df['Perf Quart'])
 
-            print('Successfully converted to numeric')
-
             df['Sum'] = df['Perf Week'] + df['Perf Month'] + df['Perf Quart']
-            print('Successfully added columns for comparison')
 
             # sort df to show biggest 'Sum' first
             sorted = df.sort_values('Sum', ascending=False)
-            print(sorted)
-            print('Successfully sorted df')
 
             # winner's url:
 
-            winner_url = sorted['Url'].iloc[0]
-            print(f'Winner url: {winner_url}')
-            return winner_url
+            self.winner_url = sorted['Url'].iloc[0]
+            return self.winner_url
 
         # If parsing website change- catch the error to prevent program crash
         except Exception as e:
             return e
 
+    def parse_stock_names(self):
+        from bs4 import BeautifulSoup
+        import requests
+        import pandas as pd
+
+        pd.set_option('display.max_columns', None)
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
+        }
+        # Try parsing
+        try:
+            response = requests.get(self.settings_url, headers=headers).text
+            soup = BeautifulSoup(response, 'html.parser')
+
+            # Get names from table
+            names = [name.text for name in soup.findAll('a', {'class': 'screener-link-primary'})]
+            self.stock = names
+            return self.stock
+        except:
+            print("I could not do final parsing of stock names provided")
+
+    def get_settings_to_url(self):
+        # # selenium 4.5.0
+        # from selenium import webdriver
+        # from selenium.webdriver.chrome.service import Service as ChromeService
+        # from webdriver_manager.chrome import ChromeDriverManager
+        # from selenium.webdriver.common.by import By
+        # import time
+        #
+        # driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+        #
+        # driver.get(self.winner_url)
+        # time.sleep(2)
+        # # Accept privacy - clich the button
+        # driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/button[3]').click()
+        # time.sleep(3)
+        # driver.quit()
+
+        # from bs4 import BeautifulSoup
+        # import requests
+        #
+        # url = self.winner_url
+        # headers = {
+        #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
+        # }
+        # response = requests.get(url, headers=headers)
+        # https: // finviz.com / screener.ashx?f = sec_energy & v = 141
+        # https: // finviz.com / screener.ashx?f = sec_basicmaterials & v = 141
+        # https: // finviz.com / screener.ashx?f = sec_communicationservices & v = 141
+
+
+        url = self.winner_url
+        start = url.find('f=')
+        end = url.find('&v')
+        sector = url[start+2:end]
+        # I know the sector name now
+
+        # Now I apply Beta- over 1.5, p/e- under 5, and get new_url
+        # You can change the settings yourself by changing url
+        new_url = f"https://finviz.com/screener.ashx?v=141&f=fa_pe_u5,{sector},ta_beta_o1.5&ft=4"
+        self.settings_url = new_url
+        print(self.settings_url)
+
+        return self.settings_url
+
+    def get_historical_prices(self):
+        import yfinance as yf
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+
+        for ticker in self.stock:
+            stock = yf.Ticker(ticker)
+            today = datetime.today().strftime('%Y-%m-%d')
+            # print(f"Today : {today}", type(today))
+            year_ago = datetime.now() - relativedelta(years=1)
+            year_ago = year_ago.strftime('%Y-%m-%d')
+            # print(f"Year ago: {year_ago}", type(year_ago))
+            df = stock.history(start=year_ago, end=today, interval='1d')
+
+            item = {
+                'name': ticker,
+                'df': df
+            }
+            self.prices.append(item)
+
+    def get_bullinger_bands(self):
+        import pandas as pd
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import datetime
+        from termcolor import colored
+
+        for item in self.prices:
+            name = item['name']
+            df = item['df']
+
+            # set date to be index
+            # df = df.set_index(pd.DatetimeIndex(df['Date'].values))
+
+            # calculate simple moving average, standard deviation, upper band and lower band for "Bollinger Bands"
+            # get a time period (20 days)
+            period = 20
+            # Calculate the simple moving average (SMA)
+            df['SMA'] = df['Close'].rolling(window=period).mean()
+            # get the standard deviation
+            df['STD'] = df['Close'].rolling(window=period).std()
+            # Calculate the Upper Bollinger Band
+            df['Upper'] = df['SMA'] + 2 * df['STD']
+            # Calculate the Lower Bollinger Band
+            df['Lower'] = df['SMA'] - 2 * df['STD']
+
+            # Create a list of columns to keep
+            column_list = ['Close', 'SMA', 'Upper', 'Lower']
+
+            # create new df
+            new_df = df[period - 1:]
+
+            # show the new data
+
+            # Create a function to get buy and sell signals
+            def get_signal(data):
+                buy_signal = []
+                sell_signal = []
+
+                for i in range(len(data['Close'])):
+                    if data['Close'][i] > data['Upper'][i]:  # Then you should sell
+                        buy_signal.append(np.nan)
+                        sell_signal.append(data['Close'][i])
+                    elif data['Close'][i] < data['Lower'][i]:  # Then you should buy
+                        buy_signal.append(data['Close'][i])
+                        sell_signal.append(np.nan)
+                    else:
+                        buy_signal.append(np.nan)
+                        sell_signal.append(np.nan)
+
+                return (buy_signal, sell_signal)
+
+            # Create two new columns
+            new_df['Buy'] = get_signal(new_df)[0]
+            new_df['Sell'] = get_signal(new_df)[1]
+
+            # Plot all of the data
+
+            fig = plt.figure(figsize=(12.2, 6.4))
+            ax = fig.add_subplot(1, 1, 1)
+            x_axis = new_df.index
+            ax.fill_between(x_axis, new_df['Upper'], new_df['Lower'], color='grey')
+            ax.plot(x_axis, new_df['Close'], color='gold', lw=3, label='Close Price', alpha=0.5)
+            ax.plot(x_axis, new_df['SMA'], color='blue', lw=3, label='Simple Moving Average', alpha=0.5)
+            ax.scatter(x_axis, new_df['Buy'], color='green', lw=3, label='Buy', marker='^', alpha=1)
+            ax.scatter(x_axis, new_df['Sell'], color='red', lw=3, label='Sell', marker='v', alpha=1)
+
+            ax.set_title(f'Bollinger band for "{name}"')
+            ax.set_xlabel('Date')
+            ax.set_ylabel('USD Price ($)')
+            plt.xticks(rotation=45)
+            ax.legend()
+            plt.show()
+
     def run_in_order(self):
+        # filter 8000 stock to successful group
         self.get_successful_group()
+        # apply Beta 1.5- to select stock that is moving together with market but is 50% more volotile
+        self.get_settings_to_url()
+        # get names of stock I will be interested in
+        self.parse_stock_names()
+        # get historical prices for stock
+        self.get_historical_prices()
+        # get charts
+        self.get_bullinger_bands()
 
 
 if __name__ == '__main__':
