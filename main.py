@@ -1,14 +1,12 @@
-# if the bot fails to work- change the selenium driver!
-
 
 class Millioner:
     def __init__(self):
         self.group_url = 'https://finviz.com/groups.ashx?g=sector&v=140&o=name'
+        # out of them we need to find winner and winner_url
         self.winner_url = ''
         self.settings_url = ''
         self.stock = ''
         self.prices = []
-
 
     def get_successful_group(self):
         # the group url is known
@@ -81,33 +79,12 @@ class Millioner:
             # winner's url:
 
             self.winner_url = sorted['Url'].iloc[0]
+            print(f"Winner url: {self.winner_url}")
             return self.winner_url
 
         # If parsing website change- catch the error to prevent program crash
         except Exception as e:
             return e
-
-    def parse_stock_names(self):
-        from bs4 import BeautifulSoup
-        import requests
-        import pandas as pd
-
-        pd.set_option('display.max_columns', None)
-
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
-        }
-        # Try parsing
-        try:
-            response = requests.get(self.settings_url, headers=headers).text
-            soup = BeautifulSoup(response, 'html.parser')
-
-            # Get names from table
-            names = [name.text for name in soup.findAll('a', {'class': 'screener-link-primary'})]
-            self.stock = names
-            return self.stock
-        except:
-            print("I could not do final parsing of stock names provided")
 
     def get_settings_to_url(self):
         # # selenium 4.5.0
@@ -138,7 +115,7 @@ class Millioner:
         # https: // finviz.com / screener.ashx?f = sec_basicmaterials & v = 141
         # https: // finviz.com / screener.ashx?f = sec_communicationservices & v = 141
 
-
+        # get the sector name
         url = self.winner_url
         start = url.find('f=')
         end = url.find('&v')
@@ -149,9 +126,32 @@ class Millioner:
         # You can change the settings yourself by changing url
         new_url = f"https://finviz.com/screener.ashx?v=141&f=fa_pe_u5,{sector},ta_beta_o1.5&ft=4"
         self.settings_url = new_url
-        print(self.settings_url)
+        print("Settings url: ", self.settings_url)
 
         return self.settings_url
+
+    def parse_stock_names(self):
+        from bs4 import BeautifulSoup
+        import requests
+        import pandas as pd
+
+        pd.set_option('display.max_columns', None)
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
+        }
+        # Try parsing
+        try:
+            response = requests.get(self.settings_url, headers=headers).text
+            soup = BeautifulSoup(response, 'html.parser')
+
+            # Get names from table
+            names = [name.text for name in soup.findAll('a', {'class': 'screener-link-primary'})]
+            self.stock = names
+            print(f"Stock: {self.stock}")
+            return self.stock
+        except:
+            print("I could not do final parsing of stock names provided")
 
     def get_historical_prices(self):
         import yfinance as yf
@@ -176,7 +176,11 @@ class Millioner:
     def get_bullinger_bands(self):
         import pandas as pd
         import numpy as np
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
+
+        import io, base64
         import datetime
         from termcolor import colored
 
@@ -240,12 +244,18 @@ class Millioner:
             ax.scatter(x_axis, new_df['Buy'], color='green', lw=3, label='Buy', marker='^', alpha=1)
             ax.scatter(x_axis, new_df['Sell'], color='red', lw=3, label='Sell', marker='v', alpha=1)
 
-            ax.set_title(f'Bollinger band for "{name}"')
+            ax.set_title(f'Bollinger bands for "{name}"')
             ax.set_xlabel('Date')
             ax.set_ylabel('USD Price ($)')
             plt.xticks(rotation=45)
             ax.legend()
-            plt.show()
+            # plt.show()
+            flike = io.BytesIO()
+            fig.savefig(flike)
+            b64 = base64.b64encode(flike.getvalue()).decode()
+            item['chart'] = b64
+            # Bullinger bands are now saved in self.prices
+            # Add the charts to Models here
 
     def run_in_order(self):
         # filter 8000 stock to successful group
