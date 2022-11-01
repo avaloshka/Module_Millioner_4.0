@@ -87,33 +87,6 @@ class Millioner:
             return e
 
     def get_settings_to_url(self):
-        # # selenium 4.5.0
-        # from selenium import webdriver
-        # from selenium.webdriver.chrome.service import Service as ChromeService
-        # from webdriver_manager.chrome import ChromeDriverManager
-        # from selenium.webdriver.common.by import By
-        # import time
-        #
-        # driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
-        #
-        # driver.get(self.winner_url)
-        # time.sleep(2)
-        # # Accept privacy - clich the button
-        # driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/button[3]').click()
-        # time.sleep(3)
-        # driver.quit()
-
-        # from bs4 import BeautifulSoup
-        # import requests
-        #
-        # url = self.winner_url
-        # headers = {
-        #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0',
-        # }
-        # response = requests.get(url, headers=headers)
-        # https: // finviz.com / screener.ashx?f = sec_energy & v = 141
-        # https: // finviz.com / screener.ashx?f = sec_basicmaterials & v = 141
-        # https: // finviz.com / screener.ashx?f = sec_communicationservices & v = 141
 
         # get the sector name
         url = self.winner_url
@@ -255,6 +228,7 @@ class Millioner:
             b64 = base64.b64encode(flike.getvalue()).decode()
             item['chart'] = b64
             # Bullinger bands are now saved in self.prices
+            return self.prices
             # Add the charts to Models here
 
     def run_in_order(self):
@@ -273,30 +247,3 @@ class Millioner:
 if __name__ == '__main__':
     millioner = Millioner()
     millioner.run_in_order()
-
-# driver.get('https://finviz.com')
-#
-# time.sleep(3)
-
-# # Accept privacy
-# driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/button[3]').click()
-# time.sleep(2)
-# # switch to Groups
-# driver.find_element(By.XPATH, '/html/body/table[2]/tbody/tr/td/table/tbody/tr/td[5]/a').click()
-# time.sleep(1000)
-
-#---------------------
-# from selenium import webdriver
-# # selenium 4.5.0
-# from selenium.webdriver.common.by import By
-#
-# import time
-#
-# driver = webdriver.Chrome()
-#
-# groups_url = 'https://finviz.com/groups.ashx'
-# driver.get(groups_url)
-# time.sleep(3)
-# # Accept privacy
-# driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/button[3]').click()
-# time.sleep(2)
