@@ -150,7 +150,6 @@ class Millioner:
         import pandas as pd
         import numpy as np
         import matplotlib
-        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
         import io, base64
@@ -222,14 +221,11 @@ class Millioner:
             ax.set_ylabel('USD Price ($)')
             plt.xticks(rotation=45)
             ax.legend()
-            # plt.show()
-            flike = io.BytesIO()
-            fig.savefig(flike)
-            b64 = base64.b64encode(flike.getvalue()).decode()
-            item['chart'] = b64
-            # Bullinger bands are now saved in self.prices
-            return self.prices
-            # Add the charts to Models here
+            plt.show()
+
+        # Bollinger bands are now saved in self.prices
+
+        # Add the charts to Models here
 
     def run_in_order(self):
         # filter 8000 stock to successful group
