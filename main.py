@@ -87,6 +87,7 @@ class Millioner:
             return e
 
     def get_settings_to_url(self):
+        self.settings_url = ''
 
         # get the sector name
         url = self.winner_url
@@ -107,6 +108,8 @@ class Millioner:
         from bs4 import BeautifulSoup
         import requests
         import pandas as pd
+
+        self.stock = ''
 
         pd.set_option('display.max_columns', None)
 
@@ -130,6 +133,9 @@ class Millioner:
         import yfinance as yf
         from datetime import datetime
         from dateutil.relativedelta import relativedelta
+        import pandas as pd
+
+        self.prices = []
 
         for ticker in self.stock:
             stock = yf.Ticker(ticker)
@@ -139,6 +145,12 @@ class Millioner:
             year_ago = year_ago.strftime('%Y-%m-%d')
             # print(f"Year ago: {year_ago}", type(year_ago))
             df = stock.history(start=year_ago, end=today, interval='1d')
+
+            # df_records = df.to_dict()
+            # converted_df = pd.DataFrame.from_dict(df_records)
+            # print(df_records)
+            # print('-----------------------------------------')
+            # print(converted_df)
 
             item = {
                 'name': ticker,
@@ -223,9 +235,7 @@ class Millioner:
             ax.legend()
             plt.show()
 
-        # Bollinger bands are now saved in self.prices
-
-        # Add the charts to Models here
+            # Yana, I need to save the chart into variable here please
 
     def run_in_order(self):
         # filter 8000 stock to successful group
